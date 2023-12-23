@@ -7,7 +7,6 @@ import model.creatures.Human;
 import model.creatures.HumanBuilder;
 import model.family_tree.FamilyTree;
 import model.human_tree.HumanTree;
-import writer.FileHandler;
 import writer.Writable;
 
 import java.io.Serializable;
@@ -18,11 +17,13 @@ public class Service implements Serializable {
     private FamilyTree<Human> familyTree;
     private final HumanTree<Human> humanTree;
     private final HumanBuilder humanBuilder;
+    private final Writable fileHandler;
 
-    public Service() {
+    public Service(Writable filehandler) {
         familyTree = new FamilyTree<>();
         humanBuilder = new HumanBuilder();
-        humanTree = new HumanTree<>(this);
+        humanTree = new HumanTree<>();
+        this.fileHandler = filehandler;
     }
 
     public FamilyTree getFamilyTree() {
@@ -43,126 +44,47 @@ public class Service implements Serializable {
     }
 
     public String showIsNotInTree() {
-        StringBuilder sb = new StringBuilder();
-        boolean flag = false;
-        if (familyTree.getNotInTree().isEmpty()) {
-            sb.append("Элементы вне дерева отсутствуют");
-            return sb.toString();
-        } else {
-            sb.append("Еще не добавлены в дерево:\nID  Name  BirthDate\n");
-            for (Creature creature : familyTree.getNotInTree()) {
-                if (flag)
-                    sb.append("\n");
-                sb.append(creature.getId() + " " + creature.getName() + " " + creature.getBirthDate());
-                flag = true;
-            }
-            return sb.toString();
-        }
+        return familyTree.showIsNotInTree();
     }
 
     public String showTree() {
-        boolean flag = false;
-        StringBuilder sb = new StringBuilder();
-        if (familyTree.getFamilyTree().isEmpty()) {
-            return sb.append("Дерево пустое").toString();
-        } else {
-            sb.append("Дерево состоит из следующих членов\n(ID)  Name  Birthdate\n");
-            for (Creature creature : familyTree.getFamilyTree()) {
-                if (flag)
-                    sb.append("\n");
-                sb.append(creature.getId() + " " + creature.getName() + " " + creature.getBirthDate());
-                flag = true;
-            }
-        }
-        return sb.toString();
+        return familyTree.showTree();
     }
 
 
     public String showHumanTree() {
-        return humanTree.showTree();
+        return humanTree.showTree(familyTree);
     }
 
     public String showAll() {
-        StringBuilder sb = new StringBuilder();
-        if (familyTree.getFamilyTree().isEmpty() && familyTree.getNotInTree().isEmpty()) {
-            return sb.append("Добавленных людей нет").toString();
-        } else {
-            boolean flag1;
-            sb.append("Все добавленные люди:\nID  Name  Birthdate");
-            for (Creature creature : familyTree.getFamilyTree()) {
-                sb.append("\n");
-                sb.append(creature.getId() + " " + creature.getName() + " " + creature.getBirthDate());
-            }
-            for (Creature creature : familyTree.getNotInTree()) {
-                sb.append("\n");
-                sb.append(creature.getId() + " " + creature.getName() + " " + creature.getBirthDate());
-            }
-        }
-        return sb.toString();
+        return familyTree.showAll();
     }
 
     public boolean setChild(Integer idParent, Integer idChild) {
-        Human parent = familyTree.searchById(idParent);
-        Human child = familyTree.searchById(idChild);
-        if (parent != null && child != null && !parent.equals(child)) {
-            return familyTree.setChildren(parent, child);
-        } else {
-            return false;
-        }
+        return familyTree.setChildren(familyTree.searchById(idParent), familyTree.searchById(idChild));
     }
 
     public boolean setMother(Integer idChild, Integer idMother) {
-        Human child = familyTree.searchById(idChild);
-        Human mother = familyTree.searchById(idMother);
-        if (child != null && mother != null && !child.equals(mother)) {
-            return familyTree.setMother(child, mother);
-        } else {
-            return false;
-        }
+        return familyTree.setMother(familyTree.searchById(idChild), familyTree.searchById(idMother));
     }
 
     public boolean setFather(Integer idChild, Integer idFather) {
-        Human child = familyTree.searchById(idChild);
-        Human father = familyTree.searchById(idFather);
-        if (child != null && father != null && !child.equals(father)) {
-            return familyTree.setFather(child, father);
-        } else {
-            return false;
-        }
+        return familyTree.setFather(familyTree.searchById(idChild), familyTree.searchById(idFather));
     }
 
     public boolean divorce(Integer idSpouce1, Integer idSpouce2) {
-        Human spouce1 = familyTree.searchById(idSpouce1);
-        Human spouce2 = familyTree.searchById(idSpouce2);
-        if (spouce1 != null && spouce1 != null) {
-            return familyTree.divorce(spouce1, spouce2);
-        } else {
-            return false;
-        }
+        return familyTree.divorce(familyTree.searchById(idSpouce1), familyTree.searchById(idSpouce2));
     }
 
     public boolean setSpouce(Integer idSpouce1, Integer idSpouce2) {
-        Human spouce1 = familyTree.searchById(idSpouce1);
-        Human spouce2 = familyTree.searchById(idSpouce2);
-        if (spouce1 != null && spouce2 != null && !spouce1.equals(spouce2)) {
-            return familyTree.setSpouse(spouce1, spouce2);
-        } else {
-            return false;
-        }
+        return familyTree.setSpouse(familyTree.searchById(idSpouce1), familyTree.searchById(idSpouce2));
     }
 
     public String showAllInfo(Integer id) {
-        StringBuilder sb = new StringBuilder();
-        if (familyTree.searchById(id) != null) {
-            sb.append(familyTree.searchById(id));
-            return sb.toString();
-        } else {
-            return sb.append("Человек с таким ID отсутствует").toString();
-        }
+        return familyTree.searchById(id).toString();
     }
 
     public boolean save(String filename) {
-        Writable fileHandler = new FileHandler();
         if (fileHandler.writeObject(familyTree, filename)) {
             fileHandler.close();
             return true;
@@ -172,18 +94,13 @@ public class Service implements Serializable {
     }
 
     public boolean load(String filename) {
-        Writable fileHandler = new FileHandler();
-        familyTree = (FamilyTree) fileHandler.readObject(filename);
+        familyTree = (FamilyTree) this.fileHandler.readObject(filename);
         fileHandler.close();
         return true;
     }
 
     public boolean emptyCheck() {
-        if (familyTree.emptyCheck())
-            return false;
-        else {
-            return true;
-        }
+        return !familyTree.emptyCheck();
     }
 
     public boolean setDeathDate(Integer id, LocalDate DeathDate) {
@@ -195,5 +112,4 @@ public class Service implements Serializable {
             return false;
         }
     }
-
 }
